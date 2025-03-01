@@ -1,0 +1,39 @@
+import numpy as np
+import pandas as pd
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from flask import Flask, request, jsonify
+
+# Step 1: Data Collection & Preprocessing
+data = pd.read_csv("https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv")
+data['species'] = data['species'].astype('category').cat.codes  # Encode labels
+X = data.drop(columns=['species'])
+y = data['species']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 2: Model Training & Evaluation
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+print(f"Model Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+
+# Save the model
+with open("model.pkl", "wb") as f:
+    pickle.dump(model, f)
+
+# Step 3: Flask API for Deployment
+app = Flask(_name_)
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    input_data = np.array(data['features']).reshape(1, -1)
+    with open("model.pkl", "rb") as f:
+        model = pickle.load(f)
+    prediction = model.predict(input_data)
+    return jsonify({"prediction": int(prediction[0])})
+
+if _name_ == '_main_':
+    app.run(debug=True)
