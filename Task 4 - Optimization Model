@@ -1,0 +1,37 @@
+import sys
+import subprocess
+
+# Ensure PuLP is installed
+try:
+    import pulp
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pulp"])
+    import pulp
+
+from pulp import LpMaximize, LpProblem, LpVariable, PULP_CBC_CMD
+
+# Define the LP problem
+model = LpProblem(name="factory-production", sense=LpMaximize)
+
+# Decision variables: number of units to produce
+A = LpVariable(name="Product_A", lowBound=0, cat='Continuous')
+B = LpVariable(name="Product_B", lowBound=0, cat='Continuous')
+
+# Objective function: Maximize profit
+model += 30 * A + 40 * B, "Total_Profit"
+
+# Constraints
+model += 2 * A + 3 * B <= 100, "Machine_Hours"  # Max 100 machine hours available
+model += 1 * A + 2 * B <= 50, "Raw_Materials"  # Max 50 kg of raw materials available
+
+# Solve the problem
+model.solve(PULP_CBC_CMD(msg=False))
+
+# Print results
+print("Optimal Production Plan:")
+if model.status == 1:
+    print(f"Product A: {A.varValue:.2f} units")
+    print(f"Product B: {B.varValue:.2f} units")
+    print(f"Maximum Profit: ${model.objective.value():.2f}")
+else:
+    print("No optimal solution found.")
