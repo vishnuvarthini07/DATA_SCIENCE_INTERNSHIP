@@ -1,0 +1,55 @@
+import numpy as np
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer, PolynomialFeatures
+from sklearn.compose import ColumnTransformer
+
+def numerical_transform(df):
+    nums = ['float64', 'int64']
+    num_attr = df.select_dtypes(include=nums)
+
+    if num_attr.shape[1] == 0:
+        raise ValueError("No numerical columns found in the dataset.")
+
+    num_pipeline = Pipeline([
+        ('impute', SimpleImputer(strategy='mean')),
+        ('log', FunctionTransformer(np.log1p, feature_names_out="one-to-one")),
+        ('std_scaler', StandardScaler()),
+        ('poly', PolynomialFeatures(2, interaction_only=False, include_bias=False))
+    ])
+
+    return num_attr, num_pipeline
+
+def full_data_pipeline(df):
+    cat_attr = ["gender"]
+    num_attr, num_pipeline = numerical_transform(df)
+
+    full_pipeline = ColumnTransformer([
+        ('num', num_pipeline, list(num_attr.columns)),  # Use actual column names
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_attr)
+    ])
+
+    return full_pipeline, num_attr.columns, cat_attr
+
+# Sample DataFrame for Testing
+df_sample = pd.DataFrame({
+    'age': [25, 30, 35, np.nan],  # Includes NaN
+    'income': [50000, 60000, 75000, 80000],
+    'gender': ['male', 'female', 'female', 'male']
+})
+
+# Create pipeline and transform the data
+pipeline, num_attr, cat_attr = full_data_pipeline(df_sample)
+transformed_data = pipeline.fit_transform(df_sample)
+
+# Get transformed feature names
+num_feature_names = pipeline.named_transformers_['num'].named_steps['poly'].get_feature_names_out(num_attr)
+cat_feature_names = pipeline.named_transformers_['cat'].get_feature_names_out()
+
+# Combine feature names
+feature_names = np.concatenate([num_feature_names, cat_feature_names])
+
+# Display results
+print("Transformed Data (Array):\n", transformed_data.toarray() if hasattr(transformed_data, "toarray") else transformed_data)
+print("\nFeature Names:\n", feature_names)
